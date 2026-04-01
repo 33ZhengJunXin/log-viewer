@@ -2,14 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日志查看器</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-text-size-adjust: 100%;
         }
 
         html, body {
@@ -17,7 +16,7 @@
             height: 100%;
             background: #000;
             color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: system-ui, sans-serif;
             overflow: hidden;
         }
 
@@ -31,30 +30,43 @@
         }
 
         #fileInput {
-            padding: 12px 14px;
+            padding: 12px;
             background: #222;
             color: white;
-            border: 1px solid #555;
-            border-radius: 12px;
+            border: 1px solid #666;
+            border-radius: 10px;
             font-size: 16px;
         }
 
-        /* 核心：手机流畅滑动 + 快速拖动 */
+        /* 日志区域 + 强制显示滚动条滑块 */
         #logArea {
             flex: 1;
             background: #000;
             color: #fff;
             padding: 12px;
-            border-radius: 12px;
             border: 1px solid #333;
-            font-size: 13px;
+            border-radius: 10px;
             line-height: 1.6;
             white-space: pre-wrap;
             word-break: break-all;
+
+            /* 核心：显示滚动条 + 可拖动滑块 */
             overflow-y: scroll;
-            -webkit-overflow-scrolling: touch; /* 苹果流畅滑动 */
-            scroll-behavior: auto !important;
-            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thick; /* 火狐滑块变宽 */
+            scrollbar-color: #666 #111; /* 滑块颜色 */
+        }
+
+        /* 谷歌 / edge / 手机浏览器 加宽滚动条 */
+        #logArea::-webkit-scrollbar {
+            width: 12px;
+        }
+        #logArea::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 6px;
+        }
+        #logArea::-webkit-scrollbar-track {
+            background: #111;
         }
 
         /* 日志颜色 */
@@ -78,20 +90,18 @@
         fileInput.addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = evt => {
-                const lines = evt.target.result.split(/\r?\n/);
-                let html = '';
-                lines.forEach(line => {
+                let out = '';
+                evt.target.result.split(/\r?\n/).forEach(line => {
                     const m = line.match(logRegex);
                     const lev = line.match(levelRegex);
                     if (m) {
                         const t = m[1], d = m[2], b = m[3], l = lev ? lev[1] : 'I';
-                        html += `<span class="${l}">[${t}] deviceId=${d} body=${b}</span>\n\n`;
+                        out += `<span class="${l}">[${t}] deviceId=${d} body=${b}</span>\n\n`;
                     }
                 });
-                logArea.innerHTML = html;
+                logArea.innerHTML = out;
             };
             reader.readAsText(file, 'UTF-8');
         });
