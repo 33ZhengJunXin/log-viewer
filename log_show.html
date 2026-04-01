@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>日志查看器</title>
     <style>
         * {
@@ -38,7 +38,7 @@
             font-size: 16px;
         }
 
-        /* 日志显示区域 */
+        /* 日志区域 */
         #logArea {
             flex: 1;
             background: #000;
@@ -51,31 +51,49 @@
             word-break: break-all;
             overflow-y: scroll;
             -webkit-overflow-scrolling: touch;
-
-            /* 火狐统一样式 */
-            scrollbar-width: 10px;
-            scrollbar-color: #888 #222;
+            scrollbar-width: none;
         }
 
-        /* ====================================== */
-        /* 🔥 核心：全平台统一滚动条样式 */
-        /* ====================================== */
-        /* Chrome / Edge / Safari / 安卓 / 苹果 */
         #logArea::-webkit-scrollbar {
-            width: 10px !important;
-            height: 10px !important;
+            display: none;
         }
-        #logArea::-webkit-scrollbar-track {
-            background: #222 !important;
-            border-radius: 10px !important;
+
+        /* --------------------- */
+        /* 底部滑块样式（全局统一）*/
+        /* --------------------- */
+        .slider-container {
+            width: 100%;
+            padding: 10px 0;
         }
-        #logArea::-webkit-scrollbar-thumb {
-            background: #888 !important;
-            border-radius: 10px !important;
-            border: 2px solid #222 !important;
+
+        #scrollSlider {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #222;
+            border-radius: 5px;
+            outline: none;
         }
-        #logArea::-webkit-scrollbar-thumb:active {
-            background: #aaa !important;
+
+        /* 滑块圆形按钮 */
+        #scrollSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #00ccff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        #scrollSlider::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            background: #00ccff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
         }
 
         /* 日志颜色 */
@@ -87,18 +105,28 @@
 <body>
     <div class="container">
         <input type="file" id="fileInput" accept=".log">
+
         <div id="logArea">请导入日志文件</div>
+
+        <!-- 底部滑动条 -->
+        <div class="slider-container">
+            <input type="range" id="scrollSlider" min="0" max="100" value="0">
+        </div>
     </div>
 
     <script>
+        const logArea = document.getElementById('logArea');
+        const scrollSlider = document.getElementById('scrollSlider');
+        const fileInput = document.getElementById('fileInput');
+
         const logRegex = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\].*?deviceId=([0-9a-fA-F:]+).*?body=(\{.*\})/;
         const levelRegex = /line":"([IWE])\s/;
-        const fileInput = document.getElementById('fileInput');
-        const logArea = document.getElementById('logArea');
 
+        // 导入日志
         fileInput.addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
+
             const reader = new FileReader();
             reader.onload = evt => {
                 let out = '';
@@ -111,8 +139,18 @@
                     }
                 });
                 logArea.innerHTML = out;
+                scrollSlider.value = 0;
             };
             reader.readAsText(file, 'UTF-8');
+        });
+
+        // ==============================
+        // 核心：滑块拖动 → 跳转到日志位置
+        // ==============================
+        scrollSlider.addEventListener('input', () => {
+            const percent = scrollSlider.value;
+            const maxScroll = logArea.scrollHeight - logArea.clientHeight;
+            logArea.scrollTop = (percent / 100) * maxScroll;
         });
     </script>
 </body>
