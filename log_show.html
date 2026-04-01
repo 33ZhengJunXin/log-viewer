@@ -2,121 +2,93 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 核心：手机端自适应必须加 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>日志记录显示器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>日志查看器</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+            -webkit-text-size-adjust: 100%;
         }
 
-        body {
+        html, body {
+            width: 100%;
+            height: 100%;
             background: #000;
-            padding: 12px;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
         }
 
         .container {
             width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        /* 顶部按钮区域 */
-        .top-bar {
-            margin-bottom: 12px;
+            height: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            padding: 10px;
+            gap: 10px;
         }
 
         #fileInput {
-            width: 100%;
-            padding: 14px 16px;
-            font-size: 16px;
+            padding: 12px 14px;
             background: #222;
-            color: #fff;
-            border: 1px solid #666;
-            border-radius: 10px;
-            cursor: pointer;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 12px;
+            font-size: 16px;
         }
 
-        /* 日志显示区域 */
+        /* 核心：手机流畅滑动 + 快速拖动 */
         #logArea {
-            width: 100%;
-            height: calc(100vh - 100px);
+            flex: 1;
             background: #000;
             color: #fff;
-            padding: 14px;
-            border-radius: 10px;
+            padding: 12px;
+            border-radius: 12px;
             border: 1px solid #333;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
             white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* 手机流畅滚动 */
+            word-break: break-all;
+            overflow-y: scroll;
+            -webkit-overflow-scrolling: touch; /* 苹果流畅滑动 */
+            scroll-behavior: auto !important;
+            overscroll-behavior: contain;
         }
 
         /* 日志颜色 */
-        .I { color: #00FF00 !important; } /* 绿 */
-        .W { color: #FFFF00 !important; } /* 黄 */
-        .E { color: #FF0000 !important; } /* 红 */
-
-        /* 手机端小屏优化 */
-        @media (max-width: 480px) {
-            #logArea {
-                font-size: 13px;
-                padding: 12px;
-                height: calc(100vh - 90px);
-            }
-            #fileInput {
-                padding: 12px 14px;
-                font-size: 15px;
-            }
-        }
+        .I { color: #00FF00; }
+        .W { color: #FFFF00; }
+        .E { color: #FF0000; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="top-bar">
-            <input type="file" id="fileInput" accept=".log">
-        </div>
-        <div id="logArea">请点击上方按钮导入 .log 日志文件</div>
+        <input type="file" id="fileInput" accept=".log">
+        <div id="logArea">请导入日志文件</div>
     </div>
 
     <script>
+        const logRegex = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\].*?deviceId=([0-9a-fA-F:]+).*?body=(\{.*\})/;
+        const levelRegex = /line":"([IWE])\s/;
         const fileInput = document.getElementById('fileInput');
         const logArea = document.getElementById('logArea');
 
-        // 正则：提取 时间、deviceId、完整body
-        const logRegex = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\].*?deviceId=([0-9a-fA-F:]+).*?body=(\{.*\})/;
-        const levelRegex = /line":"([IWE])\s/;
-
-        fileInput.addEventListener('change', (e) => {
+        fileInput.addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = (evt) => {
-                const content = evt.target.result;
-                const lines = content.split(/\r?\n/);
+            reader.onload = evt => {
+                const lines = evt.target.result.split(/\r?\n/);
                 let html = '';
-
                 lines.forEach(line => {
-                    if (!line.trim()) return;
-                    const logMatch = line.match(logRegex);
-                    const levelMatch = line.match(levelRegex);
-
-                    if (logMatch) {
-                        const time = logMatch[1];
-                        const deviceId = logMatch[2];
-                        const body = logMatch[3];
-                        const level = levelMatch ? levelMatch[1] : 'I';
-
-                        const logLine = `[${time}]  deviceId=${deviceId}  body=${body}\n\n`;
-                        html += `<span class="${level}">${logLine}</span>`;
+                    const m = line.match(logRegex);
+                    const lev = line.match(levelRegex);
+                    if (m) {
+                        const t = m[1], d = m[2], b = m[3], l = lev ? lev[1] : 'I';
+                        html += `<span class="${l}">[${t}] deviceId=${d} body=${b}</span>\n\n`;
                     }
                 });
                 logArea.innerHTML = html;
