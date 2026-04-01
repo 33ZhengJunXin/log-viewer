@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>日志查看器</title>
+    <title>日志查看器（带搜索）</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
             display: flex;
             flex-direction: column;
             padding: 10px;
-            gap: 10px;
+            gap: 8px;
         }
 
         #fileInput {
@@ -36,6 +36,45 @@
             border: 1px solid #666;
             border-radius: 10px;
             font-size: 16px;
+        }
+
+        /* 搜索栏 */
+        .search-bar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #searchInput {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .search-btn, .prev-btn, .next-btn {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: none;
+            background: #0077ff;
+            color: white;
+            font-size: 14px;
+        }
+
+        .prev-btn, .next-btn {
+            background: #222;
+        }
+
+        .options {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #ccc;
         }
 
         /* 日志区域 */
@@ -58,12 +97,24 @@
             display: none;
         }
 
-        /* --------------------- */
-        /* 底部滑块样式（全局统一）*/
-        /* --------------------- */
+        /* 搜索高亮 */
+        .highlight {
+            background-color: #ffff00;
+            color: #000 !important;
+            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .current {
+            background-color: #ff5500 !important;
+            color: #fff !important;
+        }
+
+        /* 底部滑块 */
         .slider-container {
             width: 100%;
-            padding: 10px 0;
+            padding: 8px 0;
         }
 
         #scrollSlider {
@@ -76,15 +127,12 @@
             outline: none;
         }
 
-        /* 滑块圆形按钮 */
         #scrollSlider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            appearance: none;
             width: 22px;
             height: 22px;
             background: #00ccff;
             border-radius: 50%;
-            cursor: pointer;
         }
 
         #scrollSlider::-moz-range-thumb {
@@ -92,7 +140,6 @@
             height: 22px;
             background: #00ccff;
             border-radius: 50%;
-            cursor: pointer;
             border: none;
         }
 
@@ -106,9 +153,21 @@
     <div class="container">
         <input type="file" id="fileInput" accept=".log">
 
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="搜索日志内容...">
+            <button class="search-btn">搜索</button>
+            <button class="prev-btn">上一个</button>
+            <button class="next-btn">下一个</button>
+            <div class="options">
+                <label><input type="checkbox" id="caseSensitive"> 区分大小写</label>
+            </div>
+        </div>
+
+        <!-- 日志显示 -->
         <div id="logArea">请导入日志文件</div>
 
-        <!-- 底部滑动条 -->
+        <!-- 底部滑块 -->
         <div class="slider-container">
             <input type="range" id="scrollSlider" min="0" max="100" value="0">
         </div>
@@ -118,15 +177,22 @@
         const logArea = document.getElementById('logArea');
         const scrollSlider = document.getElementById('scrollSlider');
         const fileInput = document.getElementById('fileInput');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.querySelector('.search-btn');
+        const prevBtn = document.querySelector('.prev-btn');
+        const nextBtn = document.querySelector('.next-btn');
+        const caseCheck = document.getElementById('caseSensitive');
 
         const logRegex = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)\].*?deviceId=([0-9a-fA-F:]+).*?body=(\{.*\})/;
         const levelRegex = /line":"([IWE])\s/;
+
+        let currentIndex = -1;
+        let highlights = [];
 
         // 导入日志
         fileInput.addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = evt => {
                 let out = '';
@@ -140,18 +206,67 @@
                 });
                 logArea.innerHTML = out;
                 scrollSlider.value = 0;
+                currentIndex = -1;
+                highlights = [];
             };
             reader.readAsText(file, 'UTF-8');
         });
 
-        // ==============================
-        // 核心：滑块拖动 → 跳转到日志位置
-        // ==============================
+        // 滑块滚动
         scrollSlider.addEventListener('input', () => {
-            const percent = scrollSlider.value;
-            const maxScroll = logArea.scrollHeight - logArea.clientHeight;
-            logArea.scrollTop = (percent / 100) * maxScroll;
+            const max = logArea.scrollHeight - logArea.clientHeight;
+            logArea.scrollTop = (scrollSlider.value / 100) * max;
         });
+
+        // 搜索功能
+        function doSearch() {
+            const keyword = searchInput.value.trim();
+            if (!keyword) {
+                clearHighlight();
+                return;
+            }
+            const caseSensitive = caseCheck.checked;
+            const content = logArea.innerHTML;
+            clearHighlight();
+
+            const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(`(${escaped})`, flags);
+
+            const temp = content.replace(/<span class="(I|W|E)">.*?<\/span>/g, (match) => {
+                return match.replace(regex, '<span class="highlight">$1</span>');
+            });
+
+            logArea.innerHTML = temp;
+            highlights = Array.from(logArea.querySelectorAll('.highlight'));
+            if (highlights.length > 0) jumpTo(0);
+        }
+
+        function clearHighlight() {
+            logArea.querySelectorAll('.highlight').forEach(el => {
+                el.outerHTML = el.innerHTML;
+            });
+            currentIndex = -1;
+            highlights = [];
+        }
+
+        function jumpTo(index) {
+            if (highlights.length === 0) return;
+            if (currentIndex >= 0 && highlights[currentIndex]) {
+                highlights[currentIndex].classList.remove('current');
+            }
+            currentIndex = (index + highlights.length) % highlights.length;
+            const el = highlights[currentIndex];
+            el.classList.add('current');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        searchBtn.addEventListener('click', doSearch);
+        searchInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') doSearch();
+        });
+        prevBtn.addEventListener('click', () => jumpTo(currentIndex - 1));
+        nextBtn.addEventListener('click', () => jumpTo(currentIndex + 1));
     </script>
 </body>
 </html>
