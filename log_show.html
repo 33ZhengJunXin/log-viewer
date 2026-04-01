@@ -38,7 +38,7 @@
             font-size: 16px;
         }
 
-        /* 日志区域 + 强制显示滚动条滑块 */
+        /* 日志显示区域 */
         #logArea {
             flex: 1;
             background: #000;
@@ -49,24 +49,33 @@
             line-height: 1.6;
             white-space: pre-wrap;
             word-break: break-all;
-
-            /* 核心：显示滚动条 + 可拖动滑块 */
             overflow-y: scroll;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: thick; /* 火狐滑块变宽 */
-            scrollbar-color: #666 #111; /* 滑块颜色 */
+
+            /* 火狐统一样式 */
+            scrollbar-width: 10px;
+            scrollbar-color: #888 #222;
         }
 
-        /* 谷歌 / edge / 手机浏览器 加宽滚动条 */
+        /* ====================================== */
+        /* 🔥 核心：全平台统一滚动条样式 */
+        /* ====================================== */
+        /* Chrome / Edge / Safari / 安卓 / 苹果 */
         #logArea::-webkit-scrollbar {
-            width: 12px;
-        }
-        #logArea::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 6px;
+            width: 10px !important;
+            height: 10px !important;
         }
         #logArea::-webkit-scrollbar-track {
-            background: #111;
+            background: #222 !important;
+            border-radius: 10px !important;
+        }
+        #logArea::-webkit-scrollbar-thumb {
+            background: #888 !important;
+            border-radius: 10px !important;
+            border: 2px solid #222 !important;
+        }
+        #logArea::-webkit-scrollbar-thumb:active {
+            background: #aaa !important;
         }
 
         /* 日志颜色 */
